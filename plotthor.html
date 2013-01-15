@@ -1,0 +1,92 @@
+<html>
+<head>
+    <script type="text/javascript" src="http://code.jquery.com/jquery.min.js"></script>
+    <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/flot/0.7/jquery.flot.min.js"></script>
+</head>
+<body>
+<input type="text" id="url" size="120" />
+
+<div id="graphs" style="margin-top: 16px;"></div>
+<script type="text/javascript">
+    function flatten(obj, includePrototype, into, prefix) {
+        into = into || {};
+        prefix = prefix || "";
+
+        for (var k in obj) {
+            if (includePrototype || obj.hasOwnProperty(k)) {
+                var prop = obj[k];
+                if (prop && typeof prop === "object" && !(prop instanceof Date || prop instanceof RegExp)) {
+                    flatten(prop, includePrototype, into, prefix + k + ".");
+                }
+                else {
+                    into[prefix + k] = prop;
+                }
+            }
+        }
+
+        return into;
+    }
+
+    var D = new Date();
+    var url = '';
+    var data = {};
+    var plots = [];
+
+    var options = {
+        series: {shadowSize: 0 }, // drawing is faster without shadows
+        yaxis: {show: false},
+        xaxis: {
+            show: false,
+            min: D.setHours(D.getHours()-1),
+            mode: "time",
+            timeformat: "%H:%M:%S",
+            minTickSize: [1, "minute"]
+        },
+        lines: { show: true, fill: true }
+    };
+
+    $('#url').on('change', function () {
+        $("#graphs").empty();
+        data = {};
+        plots = [];
+
+        url = $(this).val();
+    });
+
+
+    function update() {
+        $.getJSON(url, function (results) {
+            results = flatten(results);
+            $.each(results, function (key, value) {
+                if (typeof(value) !== 'string') {
+                    if (typeof(data[key]) === 'undefined') {
+                        data[key] = new Array();
+                    }
+                    data[key].push([(new Date()).getTime(), value]);
+                }
+            });
+            plotData();
+        });
+        setTimeout(update, 1000);
+    }
+
+    function plotData() {
+        $.each(data, function (key, values) {
+            if (typeof(plots[key]) === 'undefined') {
+                var em = $('<div id="#' + key + '" style="width:100%; height:40px;"></div>');
+                $('#graphs').append('<span>'+key+'</span>');
+                $('#graphs').append(em);
+                var plot = $.plot($(em), [values], options);
+                plots[key] = plot;
+            }
+
+            plots[key].setData([values]);
+            plots[key].setupGrid();
+            plots[key].draw();
+        });
+    }
+
+    update();
+</script>
+</body>
+</html>
